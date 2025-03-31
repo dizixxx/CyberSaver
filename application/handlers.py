@@ -6,218 +6,20 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import StateFilter
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart, Command
-from random import randint
-from typing import Union
+import random
+
+from sqlalchemy.util import await_only
 
 import application.keyboard as kb
 import application.database.reqests as rq
-
+from application.database.models import GosuslugiTopic, SberTopic
 
 router = Router()
 
-def check_answer(task_num: int) -> bool:
-	# тут будем проверять и смотреть в бд
-	return True
-
-@router.message(CommandStart())
-async def cmd_start(message: Message):
-	await rq.set_user(message.from_user.id)
-	await message.answer('Здравствуйте!\nЭто бот CyberSaver, он поможет вам научиться защищать себя и '
-						 'свои данные в глобальной сети!\nНажимайте кнопки ниже чтобы пройти обучение, начать учиться, '
-						 'настроить бота или больше знать о проекте CyberSaver!',
-						 reply_markup=kb.command_start)
-
-@router.message(Command('help'))
-async def cmd_help(message: Message, bot: Bot):
-	sent_message = await message.answer(
-		'ПОМОЩЬ!! !! \n Ты нажал на кнопку помощи!\nВыбери ниже, что ты хочешь узнать',
-		reply_markup=kb.command_help)
-
-@router.message(F.text == 'Начать учиться!')
-@router.message(F.text == 'В главное меню')
-async def cmd_choice(message: Message):
-	await message.answer('Выбирай :/', reply_markup=kb.main)
-
-@router.message(F.text == 'о CyberSaver')
-async def cmd_about(message: Message):
-	await message.answer('5 легенд слева направо: КЕЛУМ')
-
-@router.message(F.text == 'О режимах')
-async def cmd_about_mods(message: Message):
-	await message.answer('На данный момент в нашем боте представлены три вида тренировки: '
-						 'Аудио-, Скрин- и Текстовый режимы')
-	await message.answer('В режме АУДИО вам будут отправлены голосовые сообщения, вам нужно будет определить, '
-						 'настоящие они или фейковые')
-	await message.answer('В режиме СКРИН, вам будет отправлен скрин диалога, нам нужно будет определить,'
-						 'можно ли верить собеседнику')
-	await message.answer('В режиме ТЕКСТа вам просто нужно будет прочитать небольшую предысторию, и решить, '
-						 'насколько она правдива. Это поможет вам развить кругозор, зашарить за современные технологии, '
-						 'чтобы не быть обманутым мошенниками, и не дать себя провести.')
-
-@router.message(F.text == 'Обучение')
-async def cmd_learn(message: Message, bot: Bot):
-	sent_message = await message.answer('Добро пожаловать в киберсавер!\n Сейчас мы расскажем тебе че к чему: ....\n\n\n'
-										'бот закрпеляет сообещение, поэтому если что то забудешь то оно всегда в закрепе')
-	await bot.pin_chat_message(chat_id=message.chat.id, message_id=sent_message.message_id, disable_notification=True)
-
-@router.message(F.text == 'Для любознательных')
-async def cmd_curious(message: Message, bot: Bot):
-	sent_message = await message.answer('ну короче тут какая нибудь прикольная инфа ахаххахах гав гав мяу мяу руэрэу гаиньг')
-	sent_message = await message.answer(
-		'здесть тоже будем отправлять запрос в бд, мб будут несколько разных блоков с инфой ну короче пока ниче нет',
-	reply_markup=kb.main)
-
-@router.message(F.text == 'О проекте')
-async def cmd_about_project(message: Message, bot: Bot):
-	sent_message = await message.answer('Проект CyberSaver реализуется студентами ММФ НГУ. Команда работает над '
-										'созданием приложения, позволяющего пожилым людям тренировать свои навыки борьбы '
-										'с мошенничеством в сети. CyberSaver создает интерактивный учебник-тренажер при '
-										'помощи Telegram - бота. Результатом работы будет являться Telegram - бот с '
-										'настроенными вкладками теории по теме, тестами, интерактивными упражнениями с '
-										'элементами геймификации.')
-
-@router.message(F.text == 'О нас')
-async def cmd_about_us(message: Message, bot: Bot):
-	sent_message = await message.answer('короче мы CuberSaver крутые в андрогогике вас всему научим')
-
-@router.callback_query(F.data == "trainig_guide")
-async def trainig_guide(callback: CallbackQuery):
-	await callback.answer('')
-	await callback.message.answer('Тут вопросы, которые моделируют реальную ситуацию. Вам надо попытаться поставить'
-								  ' себя на место людей, получивших такое или похожее сообщение и продумать ваши действия'
-								  'в такой ситцуации. Давайте попробуем!', reply_markup=kb.after_guide)
-
-@router.message(F.text == 'Вернуться к выбору режима')
-@router.message(F.text == 'УЧИТЬСЯ!!!')
-async def cmd_practice(message: Message):
-	await message.answer('НАЧИАНЕМ ТРЕНИРОВКУ!!!\n')
-	await message.answer('Выбери режим тренировки! О каждом можешь узнать поподробнее, нажав на него',
-						 reply_markup=kb.choose_training_type)
-
-@router.message(F.text == 'Аудио-тренировка')
-async def cmd_practice(message: Message):
-	await message.answer('Вы выбрали режим аудио-тренировки!')
-	await message.answer('Ты можешь начать тренировку, узнать больше о режиме или вернуться к выбору режима',
-						 reply_markup=kb.audio_choosing)
-
-@router.message(F.text == 'Имитация диалога')
-async def cmd_practice(message: Message):
-	await message.answer('Вы выбрали режим работы со скриншотами!')
-	await message.answer('Ты можешь начать тренировку, узнать больше о режиме или вернуться к выбору режима',
-						 reply_markup=kb.picture_choosing)
-
-class PracticeStates(StatesGroup):
-	waiting_answer = State()
-
-def get_continue_button(mode):
-	return kb.after_answer_pic if mode == "pic" else kb.after_answer_aud
-
-@router.message(F.text == 'Начать тренировку!')
-async def start_practice_message(message: Message, state: FSMContext):
-	await message.answer("Начинаем тренировку! Сейчас будут задания, отвечайте так, как ответили бы ирл.",
-						 reply_markup=kb.emergency_exit)
-	await practice_handler_pic(message, state)
-
-@router.callback_query(F.data == "continue_training_pic")
-async def start_practice_callback(callback: CallbackQuery, state: FSMContext):
-	await practice_handler_pic(callback.message, state)
-	await callback.answer()
-
-async def practice_handler_pic( source: Union[Message, CallbackQuery], state: FSMContext) -> None:
-	task_id = randint(1, 5)
-	task = await rq.get_task_pic_by_id(task_id)
-
-	if isinstance(source, CallbackQuery):
-		message = source.message
-		await source.answer()
-	else:
-		message = source
-
-	await state.update_data(correct_answer=task.task_answer, current_task=task, training_mode="pic" )
-	await state.set_state(PracticeStates.waiting_answer)
-
-	try:
-		if task.task_picUrl and task.task_picUrl != "null":
-			await message.answer_photo(
-				photo=task.task_picUrl,
-				caption=task.task_text,
-				reply_markup=kb.practice_options
-			)
-		else:
-			await message.answer(
-				"К сожалению, не удалось загрузить изображение. "
-				"Проверьте свое подключение к интернету или перезагрузите приложение телеграмм.\n "
-				"Давайте продолжим тренировку в текстовом формате!"
-			)
-			await message.answer(f'**Задание**:\n{task.task_text}', reply_markup=kb.practice_options)
-	except Exception as e:
-		print(f"Ошибка pic тренировки: {e}")
-
-@router.message(F.text == 'Начать аудио-тренировку!')
-async def start_practice_message(message: Message, state: FSMContext):
-	await message.answer("Начинаем тренировку! Сейчас будут задания, отвечайте так, как ответили бы ирл.",
-						 reply_markup=kb.emergency_exit)
-	await practice_handler_aud(message, state)
-
-@router.callback_query(F.data == "continue_training_aud")
-async def start_practice_callback(callback: CallbackQuery, state: FSMContext):
-	await practice_handler_aud(callback.message, state)
-	await callback.answer()
-
-async def practice_handler_aud( source: Union[Message, CallbackQuery], state: FSMContext) -> None:
-	task_id = randint(1, 5)
-	task = await rq.get_task_aud_by_id(task_id)
-
-	if isinstance(source, CallbackQuery):
-		message = source.message
-		await source.answer()
-	else:
-		message = source
-
-	await state.update_data(correct_answer=task.task_answer, current_task=task, training_mode="aud" )
-	await state.set_state(PracticeStates.waiting_answer)
-
-	# print(f"DEBUG: task_audioLINK = {task.task_audioLINK}")
-	try:
-		if task.task_audioLINK and task.task_audioLINK not in ["null", ""]:
-			await message.answer_audio(audio=task.task_audioLINK, caption=task.task_text,
-										   reply_markup=kb.practice_options)
-		else:
-			await message.answer("Нет аудиофайла для этого задания. Давайте продолжим текстом.")
-			await message.answer(f'**Задание**:\n{task.task_text}', reply_markup=kb.practice_options)
-	except Exception as e:
-		print(f"Ошибка отправки аудио: {e}")
-		await message.answer("Произошла ошибка при загрузке аудио. Давайте продолжим в текстовом формате.")
-		await message.answer(f'**Задание**:\n{task.task_text}', reply_markup=kb.practice_options)
-
-
-@router.callback_query(StateFilter(PracticeStates.waiting_answer))
-async def handle_practice_answer(callback: CallbackQuery, state: FSMContext):
-	data = await state.get_data()
-	task = data['current_task']
-	correct_answer = task.task_answer
-	training_mode = data.get("training_mode", "pic")  # По умолчанию режим "pic"
-	continue_button = get_continue_button(training_mode)
-
-	user_answer = "_____ДА_____" if callback.data == "right" else "_____НЕТ_____"
-	wrong_user_answer = "_____НЕТ_____" if callback.data == "right" else "_____ДА_____"
-
-	if callback.data == correct_answer:
-		response = f'✅✅✅Ваш ответ: {user_answer}✅✅✅\nПравильно!\n\nКомментарий: {task.task_comment}\n\n'
-	else:
-		response = (f'❌❌❌Ваш ответ: {user_answer}❌❌❌\nНеправильно. Надо было отвечать: {wrong_user_answer} '
-					f'\n\nКомментарий: {task.task_comment}\n\n')
-
-	response += "Нажмите кнопку, чтобы продолжить тренировку в этом же режиме."
-
-	await callback.message.answer(response, reply_markup=continue_button)
-	await state.clear()
-	await callback.answer()
-
-
-
-"""----------------------------ФУНКЦИИ ОТ АДМИНА----------------------------"""
+"""-------------------------------------------------ФУНКЦИИ ОТ АДМИНА------------------------------------------------"""
+"""------------------------------------------------------------------------------------------------------------------"""
 
 @router.message(F.photo, Command('image'))
 async def photo_handler(message: Message) -> None:
@@ -225,24 +27,12 @@ async def photo_handler(message: Message) -> None:
 	photo_data = message.photo[-1]
 	print(photo_data.file_id)
 
-# @router.message(F.audio | F.voice)
-@router.message(Command('audio'))
+@router.message(F.audio | F.voice)
+# @router.message(Command('audio'))
 async def audio_or_voice_handler(message: Message) -> None:
 	"""использовать для заполнения бд столбец task_audio.audioLINK"""
 	file_id = message.audio.file_id if message.audio else message.voice.file_id
 	print(file_id)
-
-@router.message(Command('54798_bd.info'))
-async def tasks(message: Message):
-	all_tasks_pic = await rq.get_tasks_pic()
-	total_count = 0; pic_count = 0; aud_count = 0
-	for task in all_tasks_pic: pic_count += 1
-
-	all_tasks_pic = await rq.get_tasks_aud()
-	for task in all_tasks_pic: aud_count += 1
-	await message.answer(f'На данный момент бот насчитывает {total_count} заданий.\n'
-						 f'Из них {pic_count} заданий с изображениями диалогов и '
-						 f' {aud_count} аудио-заданий.')
 
 @router.message(Command('54798_user.info'))
 async def tasks(message: Message):
@@ -250,3 +40,194 @@ async def tasks(message: Message):
 	count = 0
 	for task in all_users: count += 1
 	await message.answer(f'На данный момент бот насчитывает {count} пользователей.')
+
+@router.message(Command('help'))
+async def cmd_help(message: Message, bot: Bot):
+	sent_message = await message.answer(
+		'ПОМОЩЬ!! !! \n Ты нажал на кнопку помощи!\nВыбери ниже, что ты хочешь узнать',
+		reply_markup=kb.command_help)
+
+"""------------------------------------------------------------------------------------------------------------------"""
+"""------------------------------------------------------------------------------------------------------------------"""
+
+@router.message(CommandStart())
+async def cmd_start(message: Message, bot: Bot):
+	await rq.set_user(message.from_user.id)
+	await message.answer('Здравствуйте! Добро пожалость в бот CyberSaver!\nЭтот бот - разработка студентов НГУ, '
+						 'помогающая борьбе с преступностью в Интернете!\n'
+						 'В настоящее время Интернет наполнен огромным количеством мошенников, которые используют '
+						 'любые современные методы для того, чтобы обманывать людей и присваивать себе их имущество и данные.\n'
+						 'Мы считаем, что любой человек может научиться правильно защищаться в Сети, а в случае беды'
+						 'уметь правильно реагировать на сложивуюся ситцацию. Для этого и создан наш проект!\n')
+	sent_message = await message.answer('Этот проект представляет собой интерактивный тренажер, имеющий три типа заданий:'
+						 'Аудио-, Скрин- и Текстовый режимы. Сейчас расскажем попордробнее:\n'
+						 'В режме АУДИО вам будут отправлены голосовые сообщения, вам нужно будет определить, настоящие они или фейковые.\n'
+						 'В режиме СКРИН, вам будет отправлен скрин диалога, нам нужно будет определить,'
+						 'можно ли верить собеседнику.\n В режиме ТЕКСТа вам просто нужно будет прочитать небольшую предысторию, и решить, '
+						 'насколько она правдива. Это поможет вам развить кругозор, зашарить за современные технологии'
+						 ', чтобы не быть обманутым мошенниками, и не дать себя провести!\n'
+						 'Кстати,'
+						 'бот сам закрепляет сообщение, поэтому если что-то будет непонятно, нажмите на плашку в верхней части экрана!')
+	await bot.pin_chat_message(chat_id=message.chat.id, message_id=sent_message.message_id, disable_notification=True)
+	await message.answer('Звучит сложновато, однако это лишь на первый взгляд! Давайте начнем первую тренировку!',
+						 reply_markup = kb.command_start)
+
+@router.message(F.text == 'О проекте CyberSaver')
+async def cmd_about_project(message: Message):
+	sent_message = await message.answer('Проект CyberSaver реализуется студентами ММФ НГУ. Команда работает над '
+										'созданием приложения, позволяющего людям серебряного возраста тренировать свои '
+										'навыки борьбы с мошенничеством в сети. CyberSaver создает интерактивный учебник-тренажер'
+										'на платформе Telegram. Результатом работы будет являться Telegram - бот с '
+										'настроенными вкладками теории по теме, тестами, интерактивными упражнениями  несокльких типов'
+										'с элементами геймификации.')
+
+@router.message(F.text == 'Начать учиться!')
+@router.message(F.text == 'Вернуться в главное меню⬅')
+async def cmd_about_project(message: Message):
+	await message.answer('Замечательно!\nЗдесь вы можете начать отрабатывать практические навыки,'
+										'прочитать интересные истории и лайфхаки, а так же обратиться за помощью!',
+										reply_markup=kb.main)
+
+@router.message(F.text == '🧐Для любознательных🧐')
+async def cmd_curious(message: Message):
+	await message.answer('В этом разделе вы можете узнать о том, как защищаться от самых современных видов'
+										'Интернет-мошенничества, послушать истории реальных людей, обманутых преступниками,'
+										'прочитать про интересные приемы и многое другое!', reply_markup=kb.for_curious_home)
+
+@router.message(F.text == '😞Помощь😞')
+async def cmd_curious(message: Message):
+	await message.answer('чек закреп хз\nЕсли есть вопросы по боту, пишите @Dj_arbuzzzzzzz',
+						 reply_markup=kb.for_curious_home)
+
+
+"""--------------------trainig parth--------------------------------"""
+
+topics = ["sber", "gosuslugi"]
+
+@router.message(F.text == '💪УЧИТЬСЯ!!!💪')
+async def start_practice_callback(message: Message, state: FSMContext):
+	await message.answer('Начинаем тренировку!', reply_markup=kb.emergency_exit)
+	current_topic = random.choice(topics)
+	await load_questions_for_topic(state, current_topic)
+	await send_question(message, state)
+
+
+async def load_questions_for_topic(state: FSMContext, topic: str):
+	if topic == "sber":
+		topic_tasks = await rq.get_sber_topic_tasks()
+	else:
+		topic_tasks = await rq.get_gosuslugi_topic_tasks()
+
+	task_list = list(topic_tasks)
+	await state.update_data(current_topic=topic, question_count=0, topic_questions=task_list)
+
+async def send_question(message: Message, state: FSMContext):
+	data = await state.get_data()
+	question_count = data.get("question_count", 0)
+	topic_questions = data.get("topic_questions", [])
+	current_topic = data.get("current_topic")
+	last_message_id = data.get("last_message_id")
+
+	search_class = {
+		"gosuslugi": [GosuslugiTopic, "ОПАСНОСТЬ С ГОСУСЛУГ!!"],
+		"sber": [SberTopic, "ВЗЛОМ ОНЛАЙН КОШЕЛЬКА!!!"],
+	}
+
+	if question_count >= 5 or not topic_questions:
+		await message.answer('-----------------КОНЕЦ ТОПИКА-----------------------')
+		await message.answer('Замечательно! Вы улучшили свою безопасность на 5 вопросов!'
+							 'У мошенников почти не осталось шансов против вас!')
+		new_topic = random.choice([t for t in topics if t != current_topic])
+		await load_questions_for_topic(state, new_topic)
+		data = await state.get_data()
+		topic_questions = data.get("topic_questions", [])
+		current_topic = data.get("current_topic")
+		question_count = 0
+		await message.answer(f'Давайте порешаем на новую тему! Например, как вам идея: {search_class[current_topic][1]}')
+
+	if not topic_questions:
+		await message.answer("В данной категории пока нет заданий, попробуйте позже.")
+		return
+
+	task = random.choice(topic_questions)
+	await state.update_data(correct_answer=task.task_answer, right_comment=task.task_right_comment,
+							wrong_comment=task.task_wrong_comment, question_count=question_count + 1)
+
+	if last_message_id:
+		try:
+			await message.bot.edit_message_reply_markup(chat_id=message.chat.id,
+														message_id=last_message_id,
+														reply_markup=None)
+		except Exception as e:
+			print(f"Ошибка при удалении inline-кнопок: {e}")
+
+	answer_options = await rq.get_answer_options(task.task_id, search_class[current_topic][0])
+
+	buttons = [
+		InlineKeyboardButton(text=option, callback_data=f"answer_{index}")
+		for index, option in enumerate(answer_options)
+	]
+
+	n = len(buttons)
+	if n == 2:
+		rows = [buttons[:2]]
+	elif n == 3:
+		rows = [buttons[:2], buttons[2:]]
+	elif n == 4:
+		rows = [buttons[:2], buttons[2:4]]
+	elif n == 5:
+		rows = [buttons[:2], buttons[2:4], buttons[4:]]
+	elif n == 6:
+		rows = [buttons[:2], buttons[2:4], buttons[4:]]
+	else:
+		rows = [[btn] for btn in buttons]
+
+	keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+	try:
+		if task.task_link and task.task_link != "null":
+			if task.task_type == "pic":
+				sent_message = await message.answer_photo(task.task_link, caption=task.task_text, reply_markup=keyboard)
+			elif task.task_type == "aud":
+				sent_message = await message.answer_voice(task.task_link, caption=task.task_text, reply_markup=keyboard)
+			else:
+				sent_message = await message.answer(task.keyboard, reply_markup=keyboard)
+
+		else:
+			await message.answer(
+				"К сожалению, не удалось загрузить изображение. "
+				"Проверьте свое подключение к интернету или перезагрузите приложение телеграмм.\n "
+				"Давайте продолжим тренировку в текстовом формате!"
+			)
+			sent_message = await message.answer(f'**Задание**:\n{task.task_text}', reply_markup=keyboard)
+
+		await state.update_data(last_message_id=sent_message.message_id)
+
+	except Exception as e:
+		print(f'ошибка при отправке файла {task.task_type}: {e}\n'
+			  f'{task.task_id} || {task.task_text} || {task.task_link}')
+
+@router.callback_query(F.data.startswith("answer_"))
+async def process_answer(callback: CallbackQuery, state: FSMContext):
+	await callback.answer()
+	data = await state.get_data()
+	correct_answer = data.get("correct_answer")
+	right_comment = data.get("right_comment")
+	wrong_comment = data.get("wrong_comment")
+
+	callback_data = callback.data
+	answer_index = int(callback_data.split("_")[1])
+
+	if correct_answer == answer_index:
+		response = f"✅ Правильно!\n\nКомментарий:\n{right_comment}"
+	else:
+		response = f"❌ Неправильно.\n\nКомментарий:\n{wrong_comment}"
+
+	await callback.message.answer(response)
+	await send_question(callback.message, state)
+
+@router.callback_query(F.data == "continue_practice")
+async def continue_practice(callback: CallbackQuery, state: FSMContext):
+	await callback.message.delete()
+	await send_question(callback.message, state)
